@@ -1,0 +1,62 @@
+# macOS metadata
+.DS_Store
+._*
+.Spotlight-V100/
+.Trashes/
+__MACOSX/
+
+# Xcode user state (keep project/workspace definitions and shared schemes)
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+*.xccheckout
+*.xcscmblueprint
+
+# Build products and test artifacts
+.build/
+build/
+Build/
+DerivedData/
+.swiftpm/
+*.app/
+*.ipa
+*.dSYM/
+*.xcarchive/
+*.xcresult/
+*.xctestrun
+TestResults/
+test-results/
+coverage/
+*.profraw
+*.profdata
+*.log
+
+# Authentication, signing material, and local runtime configuration
+.env
+.env.*
+!.env.example
+*.local
+*.local.*
+*.xcconfig.local
+.codex/
+.aws/
+.ssh/
+.secrets/
+secrets/
+credentials/
+auth.json
+credentials.json
+*.pem
+*.key
+*.p12
+*.p8
+*.mobileprovision
+
+# Workshop presentation and temporary output
+.deck-build/
+output/
+tmp/
+temp/
+*.pptx
+
+# Keep AGENTS.md, .agents/skills/, Swift sources/tests, assets, and Xcode projects.
