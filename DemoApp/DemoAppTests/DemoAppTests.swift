@@ -75,9 +75,64 @@ struct DemoAppTests {
                 let store = TaskStore(defaults: defaults)
                 #expect(store.loadError != nil)
                 #expect(!store.addTask(title: "Must not overwrite"))
+                #expect(!store.toggleCompletion(id: UUID()))
+                #expect(store.pendingCount == 0)
                 #expect(store.tasks.isEmpty)
                 #expect(defaults.object(forKey: TaskStore.storageKey) as? NSObject == before)
             }
+        }
+    }
+
+    @Test func togglesOnlySelectedIdentityAndPersistsBothDirections() throws {
+        try withDefaults { defaults in
+            // Equal titles ensure selection uses identity rather than display text.
+            let items = [
+                TaskItem(title: "Same"),
+                TaskItem(title: "Same"),
+                TaskItem(title: "Completed neighbor", isCompleted: true)
+            ]
+            defaults.set(try JSONEncoder().encode(items), forKey: TaskStore.storageKey)
+            let store = TaskStore(defaults: defaults)
+            #expect(store.pendingCount == 2)
+            #expect(store.toggleCompletion(id: items[1].id))
+            var expected = items
+            expected[1].isCompleted = true
+            #expect(store.tasks == expected)
+            #expect(store.pendingCount == 1)
+            let reloaded = TaskStore(defaults: defaults)
+            #expect(reloaded.tasks == expected)
+            #expect(reloaded.pendingCount == 1)
+            #expect(reloaded.addTask(title: "  Added \n"))
+            let added = try #require(reloaded.tasks.last)
+            #expect(added.title == "Added")
+            #expect(!added.isCompleted)
+            #expect(reloaded.pendingCount == 2)
+            #expect(reloaded.toggleCompletion(id: items[1].id))
+            #expect(reloaded.pendingCount == 3)
+            let final = TaskStore(defaults: defaults)
+            #expect(final.tasks == items + [added])
+            #expect(final.pendingCount == 3)
+        }
+    }
+
+    @Test func pendingCountTracksEmptyAddAndToggleAndUnknownIDDoesNotWrite() {
+        withDefaults { defaults in
+            let store = TaskStore(defaults: defaults)
+            #expect(store.pendingCount == 0)
+            #expect(!store.toggleCompletion(id: UUID()))
+            #expect(defaults.object(forKey: TaskStore.storageKey) == nil)
+            #expect(store.addTask(title: "Only task"))
+            #expect(store.tasks.count == 1)
+            #expect(store.pendingCount == 1)
+            let saved = defaults.data(forKey: TaskStore.storageKey)
+            let tasks = store.tasks
+            #expect(!store.toggleCompletion(id: UUID()))
+            #expect(store.tasks == tasks)
+            #expect(defaults.data(forKey: TaskStore.storageKey) == saved)
+            #expect(store.toggleCompletion(id: tasks[0].id))
+            #expect(store.pendingCount == 0)
+            #expect(store.toggleCompletion(id: tasks[0].id))
+            #expect(store.pendingCount == 1)
         }
     }
 }
