@@ -10,6 +10,10 @@ final class TaskStore {
     private(set) var loadError: String?
     private let defaults: UserDefaults
 
+    var pendingCount: Int {
+        tasks.filter { !$0.isCompleted }.count
+    }
+
     init(defaults: UserDefaults) {
         self.defaults = defaults
         guard let savedValue = defaults.object(forKey: Self.storageKey) else { return }
@@ -19,7 +23,7 @@ final class TaskStore {
             }
             tasks = try JSONDecoder().decode([TaskItem].self, from: data)
         } catch {
-            loadError = "Saved tasks could not be loaded. Your saved data has been preserved. Adding tasks is disabled until the data can be recovered."
+            loadError = "Saved tasks could not be loaded. Your saved data has been preserved. Task changes are disabled until the data can be recovered."
         }
     }
 
@@ -32,6 +36,20 @@ final class TaskStore {
         let title = Self.normalizedTitle(title)
         guard loadError == nil, !title.isEmpty else { return false }
         let updated = tasks + [TaskItem(title: title)]
+        return save(updated)
+    }
+
+    @discardableResult
+    func toggleCompletion(id: UUID) -> Bool {
+        guard loadError == nil, let index = tasks.firstIndex(where: { $0.id == id }) else {
+            return false
+        }
+        var updated = tasks
+        updated[index].isCompleted.toggle()
+        return save(updated)
+    }
+
+    private func save(_ updated: [TaskItem]) -> Bool {
         guard let data = try? JSONEncoder().encode(updated) else { return false }
         defaults.set(data, forKey: Self.storageKey)
         tasks = updated
