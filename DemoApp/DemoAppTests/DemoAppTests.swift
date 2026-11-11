@@ -67,6 +67,50 @@ struct DemoAppTests {
         }
     }
 
+    @Test func togglesOnlySelectedIdentityAndPersistsBothDirections() throws {
+        try withDefaults { defaults in
+            let items = [
+                TaskItem(title: "Same title", isCompleted: true),
+                TaskItem(title: "Same title"),
+                TaskItem(title: "Neighbor")
+            ]
+            defaults.set(try JSONEncoder().encode(items), forKey: TaskStore.storageKey)
+            let store = TaskStore(defaults: defaults)
+            #expect(store.pendingCount == 2)
+            #expect(store.toggleTask(id: items[1].id))
+            var expected = items
+            expected[1].isCompleted = true
+            #expect(store.tasks == expected)
+            #expect(store.pendingCount == 1)
+            let reloaded = TaskStore(defaults: defaults)
+            #expect(reloaded.tasks == expected)
+            #expect(reloaded.toggleTask(id: items[1].id))
+            #expect(reloaded.pendingCount == 2)
+            #expect(reloaded.addTask(title: "  Added \n"))
+            let added = try #require(reloaded.tasks.last)
+            #expect(added.title == "Added")
+            #expect(!added.isCompleted)
+            #expect(reloaded.pendingCount == 3)
+            let final = TaskStore(defaults: defaults)
+            #expect(final.tasks == items + [added])
+            #expect(final.pendingCount == 3)
+        }
+    }
+
+    @Test func emptyCountAndUnknownIdentityDoNotMutateStorage() {
+        withDefaults { defaults in
+            let store = TaskStore(defaults: defaults)
+            #expect(store.pendingCount == 0)
+            #expect(!store.toggleTask(id: UUID()))
+            #expect(defaults.object(forKey: TaskStore.storageKey) == nil)
+            #expect(store.addTask(title: "Task"))
+            let saved = defaults.data(forKey: TaskStore.storageKey)
+            #expect(!store.toggleTask(id: UUID()))
+            #expect(store.pendingCount == 1)
+            #expect(defaults.data(forKey: TaskStore.storageKey) == saved)
+        }
+    }
+
     @Test func preservesUnreadableDataAndBlocksAdditions() {
         withDefaults { defaults in
             for value: Any in [Data("broken JSON".utf8), "wrong storage type", Data("{}".utf8)] {
@@ -75,6 +119,8 @@ struct DemoAppTests {
                 let store = TaskStore(defaults: defaults)
                 #expect(store.loadError != nil)
                 #expect(!store.addTask(title: "Must not overwrite"))
+                #expect(!store.toggleTask(id: UUID()))
+                #expect(store.pendingCount == 0)
                 #expect(store.tasks.isEmpty)
                 #expect(defaults.object(forKey: TaskStore.storageKey) as? NSObject == before)
             }

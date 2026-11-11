@@ -43,6 +43,45 @@ final class DemoAppUITests: XCTestCase {
     }
 
     @MainActor
+    func testCompletionCountPresentationAndPersistence() {
+        app.launch()
+        let count = app.staticTexts["pendingCount"]
+        XCTAssertTrue(count.waitForExistence(timeout: 5))
+        XCTAssertEqual(count.label, "Pending: 0")
+        let field = app.textFields["taskTitle"]
+        for title in ["First", "Second"] {
+            field.tap()
+            field.typeText(title)
+            app.buttons["Add"].tap()
+        }
+        XCTAssertEqual(count.label, "Pending: 2")
+        let control = app.buttons["Mark complete: First"]
+        XCTAssertEqual(control.value as? String, "Incomplete")
+        control.tap()
+        XCTAssertEqual(count.label, "Pending: 1")
+        XCTAssertTrue(app.staticTexts["Completed"].exists)
+        XCTAssertEqual(app.buttons["Mark incomplete: First"].value as? String, "Completed")
+        XCTAssertEqual(app.buttons["Mark complete: Second"].value as? String, "Incomplete")
+        XCTAssertLessThan(app.staticTexts["First"].frame.minY, app.staticTexts["Second"].frame.minY)
+
+        app.terminate()
+        app.launchEnvironment.removeValue(forKey: "TASK_TRACKER_RESET")
+        app.launch()
+        let reopen = app.buttons["Mark incomplete: First"]
+        XCTAssertTrue(reopen.waitForExistence(timeout: 5))
+        XCTAssertEqual(count.label, "Pending: 1")
+        reopen.tap()
+        XCTAssertEqual(count.label, "Pending: 2")
+        XCTAssertFalse(app.staticTexts["Completed"].exists)
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(app.buttons["Mark complete: First"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["Mark complete: First"].value as? String, "Incomplete")
+        XCTAssertEqual(count.label, "Pending: 2")
+        XCTAssertTrue(app.staticTexts["Second"].exists)
+    }
+
+    @MainActor
     func testStorageIsolationAcrossSuitesRelaunchAndCleanup() {
         let originalSuite = app.launchEnvironment["TASK_TRACKER_TEST_SUITE"]!
         let title = "Isolation \(UUID().uuidString)"
